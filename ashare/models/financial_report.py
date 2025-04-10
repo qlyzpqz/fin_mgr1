@@ -1,7 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from decimal import Decimal
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
+import json
 
 @dataclass
 class IncomeStatement:
@@ -100,6 +101,38 @@ class IncomeStatement:
     continued_net_profit: Decimal # 持续经营净利润
     end_net_profit: Decimal # 终止经营净利润
     update_flag: str # 更新标识
+    
+    @classmethod
+    def from_json(cls, json_str: str) -> 'IncomeStatement':
+        """从JSON字符串创建利润表对象"""
+        data = json.loads(json_str)
+        # 转换日期字段
+        for date_field in ['ann_date', 'f_ann_date', 'end_date']:
+            if data.get(date_field):
+                data[date_field] = datetime.strptime(data[date_field], '%Y-%m-%d').date()
+        
+        # 转换Decimal字段
+        for key, value in data.items():
+            if isinstance(value, (str, int, float)) and key not in ['ts_code', 'report_type', 'comp_type', 'end_type', 'update_flag']:
+                data[key] = Decimal(str(value))
+        
+        return cls(**data)
+
+    def to_json(self) -> str:
+        """将利润表对象转换为JSON字符串"""
+        data = asdict(self)
+        # 转换日期字段
+        for date_field in ['ann_date', 'f_ann_date', 'end_date']:
+            if data.get(date_field):
+                data[date_field] = data[date_field].isoformat()
+        
+        # 转换Decimal字段
+        for key, value in data.items():
+            if isinstance(value, Decimal):
+                data[key] = str(value)
+        
+        return json.dumps(data, ensure_ascii=False)
+
 
 @dataclass
 class BalanceSheet:
@@ -262,12 +295,43 @@ class BalanceSheet:
     oth_rcv_total: Decimal # 其他应收款(合计)（元）
     fix_assets_total: Decimal # 固定资产(合计)(元)
     update_flag: str # 更新标识
+    
+    @classmethod
+    def from_json(cls, json_str: str) -> 'BalanceSheet':
+        """从JSON字符串创建资产负债表对象"""
+        data = json.loads(json_str)
+        # 转换日期字段
+        for date_field in ['ann_date', 'f_ann_date', 'end_date']:
+            if data.get(date_field):
+                data[date_field] = datetime.strptime(data[date_field], '%Y-%m-%d').date()
+        
+        # 转换Decimal字段
+        for key, value in data.items():
+            if isinstance(value, (str, int, float)) and key not in ['ts_code', 'report_type', 'comp_type', 'end_type', 'update_flag']:
+                data[key] = Decimal(str(value))
+        
+        return cls(**data)
+
+    def to_json(self) -> str:
+        """将资产负债表对象转换为JSON字符串"""
+        data = asdict(self)
+        # 转换日期字段
+        for date_field in ['ann_date', 'f_ann_date', 'end_date']:
+            if data.get(date_field):
+                data[date_field] = data[date_field].isoformat()
+        
+        # 转换Decimal字段
+        for key, value in data.items():
+            if isinstance(value, Decimal):
+                data[key] = str(value)
+        
+        return json.dumps(data, ensure_ascii=False)
 
 @dataclass
 class CashFlowStatement:
     """现金流量表"""
     ts_code: str # TS股票代码
-    ann_date: str # 公告日期
+    ann_date: date # 公告日期
     f_ann_date: date # 实际公告日期
     end_date: date # 报告期
     comp_type: str # 公司类型(1一般工商业2银行3保险4证券)
@@ -363,6 +427,37 @@ class CashFlowStatement:
     end_bal_cash_equ: Decimal # 加:现金等价物的期末余额
     beg_bal_cash_equ: Decimal # 减:现金等价物的期初余额
     update_flag: str # 更新标志(1最新）
+    
+    @classmethod
+    def from_json(cls, json_str: str) -> 'CashFlowStatement':
+        """从JSON字符串创建现金流量表对象"""
+        data = json.loads(json_str)
+        # 转换日期字段
+        for date_field in ['ann_date', 'f_ann_date', 'end_date']:
+            if data.get(date_field):
+                data[date_field] = datetime.strptime(data[date_field], '%Y-%m-%d').date()
+        
+        # 转换Decimal字段
+        for key, value in data.items():
+            if isinstance(value, (str, int, float)) and key not in ['ts_code', 'ann_date', 'report_type', 'comp_type', 'end_type', 'update_flag']:
+                data[key] = Decimal(str(value))
+        
+        return cls(**data)
+
+    def to_json(self) -> str:
+        """将现金流量表对象转换为JSON字符串"""
+        data = asdict(self)
+        # 转换日期字段
+        for date_field in ['ann_date', 'f_ann_date', 'end_date']:
+            if data.get(date_field):
+                data[date_field] = data[date_field].isoformat()
+        
+        # 转换Decimal字段
+        for key, value in data.items():
+            if isinstance(value, Decimal):
+                data[key] = str(value)
+        
+        return json.dumps(data, ensure_ascii=False)
 
 @dataclass
 class FinancialIndicators:
@@ -534,6 +629,37 @@ class FinancialIndicators:
     equity_yoy: Decimal # 净资产同比增长率
     rd_exp: Decimal # 研发费用
     update_flag: str # 更新标识
+    
+    @classmethod
+    def from_json(cls, json_str: str) -> 'FinancialIndicators':
+        """从JSON字符串创建财务指标对象"""
+        data = json.loads(json_str)
+        # 转换日期字段
+        for date_field in ['ann_date', 'end_date']:
+            if data.get(date_field):
+                data[date_field] = datetime.strptime(data[date_field], '%Y-%m-%d').date()
+        
+        # 转换Decimal字段
+        for key, value in data.items():
+            if isinstance(value, (str, int, float)) and key not in ['ts_code', 'update_flag']:
+                data[key] = Decimal(str(value))
+        
+        return cls(**data)
+
+    def to_json(self) -> str:
+        """将财务指标对象转换为JSON字符串"""
+        data = asdict(self)
+        # 转换日期字段
+        for date_field in ['ann_date', 'end_date']:
+            if data.get(date_field):
+                data[date_field] = data[date_field].isoformat()
+        
+        # 转换Decimal字段
+        for key, value in data.items():
+            if isinstance(value, Decimal):
+                data[key] = str(value)
+        
+        return json.dumps(data, ensure_ascii=False)
 
 @dataclass
 class FinancialReport:
@@ -541,7 +667,22 @@ class FinancialReport:
     ts_code: str                                    # TS代码
     report_date: date                              # 报告日期
     report_type: str                              # 报告类型
+    end_type: str                                 # 报告期类型
     income_statement: IncomeStatement               # 利润表
     balance_sheet: BalanceSheet                    # 资产负债表
     cash_flow_statement: CashFlowStatement         # 现金流量表
     financial_indicators: FinancialIndicators      # 财务指标
+
+    def to_json(self) -> str:
+        """将财务报告对象转换为JSON字符串"""
+        data = {
+            'ts_code': self.ts_code,
+            'report_date': self.report_date.isoformat(),
+            'report_type': self.report_type,
+            'end_type': self.end_type,
+            'income_statement': self.income_statement.to_json() if self.income_statement else None,
+            'balance_sheet': self.balance_sheet.to_json() if self.balance_sheet else None,
+            'cash_flow_statement': self.cash_flow_statement.to_json() if self.cash_flow_statement else None,
+            'financial_indicators': self.financial_indicators.to_json() if self.financial_indicators else None
+        }
+        return json.dumps(data, ensure_ascii=False)

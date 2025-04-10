@@ -3,6 +3,7 @@ from datetime import datetime, date
 from decimal import Decimal
 from ashare.models.financial_report_fetcher import FinancialReportFetcher
 import os
+from datetime import date
 from ashare.models.financial_report import (
     FinancialReport, IncomeStatement, BalanceSheet,
     CashFlowStatement, FinancialIndicators
@@ -19,7 +20,11 @@ def fetcher():
 def test_fetch_income_statement(fetcher):
     """测试获取利润表数据"""
     # 获取平安银行2022年报数据
-    statements = fetcher.fetch_income_statement('000001.SZ', '20220101', '20221231')
+    statements = fetcher.fetch_income_statement(
+        '000001.SZ', 
+        date(2022, 1, 1), 
+        date(2022, 12, 31)
+    )
     
     # 验证结果
     assert len(statements) > 0
@@ -34,7 +39,11 @@ def test_fetch_income_statement(fetcher):
 def test_fetch_balance_sheet(fetcher):
     """测试获取资产负债表数据"""
     # 获取平安银行2022年报数据
-    sheets = fetcher.fetch_balance_sheet('000001.SZ', '20220101', '20221231')
+    sheets = fetcher.fetch_balance_sheet(
+        '000001.SZ', 
+        date(2022, 1, 1), 
+        date(2022, 12, 31)
+    )
     
     # 验证结果
     assert len(sheets) > 0
@@ -49,7 +58,11 @@ def test_fetch_balance_sheet(fetcher):
 def test_fetch_cash_flow(fetcher):
     """测试获取现金流量表数据"""
     # 获取平安银行2022年报数据
-    statements = fetcher.fetch_cash_flow('000001.SZ', '20220101', '20221231')
+    statements = fetcher.fetch_cash_flow(
+        '000001.SZ', 
+        date(2022, 1, 1), 
+        date(2022, 12, 31)
+    )
     
     # 验证结果
     assert len(statements) > 0
@@ -63,7 +76,11 @@ def test_fetch_cash_flow(fetcher):
 def test_fetch_financial_indicators(fetcher):
     """测试获取财务指标数据"""
     # 获取平安银行2022年报数据
-    indicators = fetcher.fetch_financial_indicators('000001.SZ', '20220101', '20221231')
+    indicators = fetcher.fetch_financial_indicators(
+        '000001.SZ', 
+        date(2022, 1, 1), 
+        date(2022, 12, 31)
+    )
     
     # 验证结果
     assert len(indicators) > 0
@@ -77,7 +94,11 @@ def test_fetch_financial_indicators(fetcher):
 def test_fetch_financial_reports(fetcher):
     """测试获取完整财务报告"""
     # 获取平安银行2022年报数据
-    reports = fetcher.fetch_financial_reports('000001.SZ', '20220101', '20221231')
+    reports = fetcher.fetch_financial_reports(
+        '000001.SZ', 
+        date(2022, 1, 1), 
+        date(2022, 12, 31)
+    )
     
     # 验证结果
     assert len(reports) > 0

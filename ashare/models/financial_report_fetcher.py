@@ -27,18 +27,22 @@ class FinancialReportFetcher:
             return None
         return datetime.strptime(date_str, '%Y%m%d').date()
     
+    def _convert_date_to_str(self, d: date) -> str:
+        """将date对象转换为tushare所需的日期字符串格式(YYYYMMDD)"""
+        return d.strftime('%Y%m%d')
+    
     def _convert_decimal(self, value) -> Optional[Decimal]:
         """转换数值为Decimal类型"""
         if pd.isna(value):
             return Decimal('0')
         return Decimal(str(value))
         
-    def fetch_income_statement(self, ts_code: str, start_date: str, end_date: str) -> List[IncomeStatement]:
+    def fetch_income_statement(self, ts_code: str, start_date: date, end_date: date) -> List[IncomeStatement]:
         """同步利润表数据"""
         df = self.pro.income(
             ts_code=ts_code,
-            start_date=start_date,
-            end_date=end_date,
+            start_date=self._convert_date_to_str(start_date),
+            end_date=self._convert_date_to_str(end_date),
             fields='ts_code,'
                 'ann_date,'
                 'f_ann_date,'
@@ -237,12 +241,12 @@ class FinancialReportFetcher:
             
         return statements
         
-    def fetch_balance_sheet(self, ts_code: str, start_date: str, end_date: str) -> List[BalanceSheet]:
+    def fetch_balance_sheet(self, ts_code: str, start_date: date, end_date: date) -> List[BalanceSheet]:
         """同步资产负债表数据"""
         df = self.pro.balancesheet(
             ts_code=ts_code,
-            start_date=start_date,
-            end_date=end_date,
+            start_date=self._convert_date_to_str(start_date),
+            end_date=self._convert_date_to_str(end_date),
             fields='ts_code,'
                 'ann_date,'
                 'f_ann_date,'
@@ -569,12 +573,12 @@ class FinancialReportFetcher:
             
         return sheets
         
-    def fetch_cash_flow(self, ts_code: str, start_date: str, end_date: str) -> List[CashFlowStatement]:
+    def fetch_cash_flow(self, ts_code: str, start_date: date, end_date: date) -> List[CashFlowStatement]:
         """同步现金流量表数据"""
         df = self.pro.cashflow(
             ts_code=ts_code,
-            start_date=start_date,
-            end_date=end_date,
+            start_date=self._convert_date_to_str(start_date),
+            end_date=self._convert_date_to_str(end_date),
             fields='ts_code,'
                 'ann_date,'
                 'f_ann_date,'
@@ -779,12 +783,12 @@ class FinancialReportFetcher:
             
         return statements
         
-    def fetch_financial_indicators(self, ts_code: str, start_date: str, end_date: str) -> List[FinancialIndicators]:
+    def fetch_financial_indicators(self, ts_code: str, start_date: date, end_date: date) -> List[FinancialIndicators]:
         """同步财务指标数据"""
         df = self.pro.fina_indicator(
             ts_code=ts_code,
-            start_date=start_date,
-            end_date=end_date,
+            start_date=self._convert_date_to_str(start_date),
+            end_date=self._convert_date_to_str(end_date),
             fields='ts_code,'
                 'ann_date,'
                 'end_date,'
@@ -1129,7 +1133,7 @@ class FinancialReportFetcher:
             
         return indicators
         
-    def fetch_financial_reports(self, ts_code: str, start_date: str = None, end_date: str = None) -> List[FinancialReport]:
+    def fetch_financial_reports(self, ts_code: str, start_date: date = None, end_date: date = None) -> List[FinancialReport]:
         """
         同步完整财务报告
         
@@ -1142,9 +1146,9 @@ class FinancialReportFetcher:
             List[FinancialReport]: 财务报告列表
         """
         if not start_date:
-            start_date = '19900101'
+            start_date = date(1990, 1, 1)
         if not end_date:
-            end_date = datetime.now().strftime('%Y%m%d')
+            end_date = datetime.today()
             
         income_statements = self.fetch_income_statement(ts_code, start_date, end_date)
         balance_sheets = self.fetch_balance_sheet(ts_code, start_date, end_date)
@@ -1158,6 +1162,7 @@ class FinancialReportFetcher:
                 ts_code=ts_code,
                 report_date=statement.end_date,
                 report_type=statement.report_type,
+                end_type=statement.end_type,
                 income_statement=statement,
                 balance_sheet=next((s for s in balance_sheets 
                     if s.end_date == statement.end_date 
