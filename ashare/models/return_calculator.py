@@ -13,7 +13,7 @@ class ReturnCalculator:
         self.quotes = {q.trade_date: q for q in quotes}  # 转换为日期索引的字典
         self.dividends = sorted(dividends, key=lambda x: x.ex_date if x.ex_date else date.max)  # 按除权日排序
 
-    def _calculate_position_shares(self, current_date: date) -> Decimal:
+    def calculate_position_shares(self, current_date: date) -> Decimal:
         """计算指定日期的持仓数量（考虑送转股）"""
         shares = Decimal('0')
         
@@ -44,8 +44,18 @@ class ReturnCalculator:
                 shares += shares * event.stk_co_rate
                 
         return shares
+    
+    def get_final_value(self, end_date: date) -> Decimal:
+        """计算指定日期的最终市值"""
+        shares = self.calculate_position_shares(end_date)
+        if shares <= Decimal('0'):
+            return Decimal('0')
+        quote = self.quotes.get(end_date)
+        if not quote:
+            raise ValueError(f"没有找到 {end_date} 的行情数据")
+        return shares * quote.close
 
-    def _get_cash_flows(self, end_date: date) -> List[Tuple[date, Decimal]]:
+    def get_cash_flows(self, end_date: date) -> List[Tuple[date, Decimal]]:
         """获取所有现金流（包括买入、卖出、分红）"""
         cash_flows = []
         
@@ -65,18 +75,25 @@ class ReturnCalculator:
         for div in self.dividends:
             if not div.ex_date or div.ex_date > end_date:
                 continue
-            shares = self._calculate_position_shares(div.ex_date - timedelta(days=1))
+            shares = self.calculate_position_shares(div.ex_date - timedelta(days=1))
             if shares > Decimal('0'):
                 cash_flows.append((div.pay_date or div.ex_date, shares * div.cash_div))
 
-        # 添加最终市值
-        final_shares = self._calculate_position_shares(end_date)
-        if final_shares > Decimal('0'):
-            final_quote = self.quotes.get(end_date)
-            if not final_quote:
-                raise ValueError(f"没有找到 {end_date} 的行情数据")
-            cash_flows.append((end_date, final_shares * final_quote.close))
-
+        return sorted(cash_flows, key=lambda x: x[0])
+    
+    # 计算净现金流入值
+    def calculate_net_cash_flow_value(self, end_date: date) -> Decimal:
+        """计算指定日期的净现金流入值"""
+        cash_flows = self.get_cash_flows(end_date)
+        # 确保返回值为Decimal类型
+        return Decimal(sum(cf[1] for cf in cash_flows))
+    
+    def _get_cash_flows_with_final_value(self, end_date: date) -> List[Tuple[date, Decimal]]:
+        """获取所有现金流（包括买入、卖出、分红），并添加最终市值"""
+        cash_flows = self.get_cash_flows(end_date)
+        final_value = self.get_final_value(end_date)
+        if final_value > Decimal('0'):
+            cash_flows.append((end_date, final_value))
         return sorted(cash_flows, key=lambda x: x[0])
 
     def _xirr(self, cash_flows: List[Tuple[date, Decimal]]) -> Decimal:
@@ -114,7 +131,7 @@ class ReturnCalculator:
             return Decimal('0')
 
         end_date = evaluation_date or max(self.quotes.keys())
-        cash_flows = self._get_cash_flows(end_date)
+        cash_flows = self._get_cash_flows_with_final_value(end_date)
         
         if not cash_flows:
             return Decimal('0')

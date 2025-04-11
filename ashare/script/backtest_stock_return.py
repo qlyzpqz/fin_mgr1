@@ -3,6 +3,7 @@ from decimal import Decimal
 from typing import Dict, List, Tuple
 import pandas as pd
 
+from ashare.models import return_calculator
 from ashare.models.sync_service import SyncService
 from ashare.models.stock_trader import StockTrader, TradeAction
 from ashare.models.stock_repository import StockRepository
@@ -10,21 +11,19 @@ from ashare.models.daily_quote_repository import DailyQuoteRepository
 from ashare.models.daily_indicator_repository import DailyIndicatorRepository
 from ashare.models.dividend_repository import DividendRepository
 from ashare.models.financial_report_repository import FinancialReportRepository
-from ashare.tests.test_sync_service import tushare_token
+from ashare.models.return_calculator import ReturnCalculator
 import os
+
+from ashare.models.trade_record import TradeRecord
 
 class StockBacktester:
     def __init__(self, 
-                 stock_code: str,
                  start_date: date,
                  end_date: date,
                  initial_capital: float = 1000000.0):  # 默认100万初始资金
-        self.stock_code = stock_code
         self.start_date = start_date
         self.end_date = end_date
-        self.initial_capital = initial_capital
-        self.current_capital = initial_capital
-        self.stock_position = 0
+        self.initial_capital = Decimal(initial_capital)
         
         # 初始化数据仓库
         self.db_path = 'ashare_stock.db'
@@ -36,40 +35,53 @@ class StockBacktester:
         
         # 同步数据
         self._sync_data()
-        
-        # 加载回测期间的数据
-        self._load_data()
-        
+
     def _sync_data(self):
         """同步股票数据"""
-        tushare_token = os.getenv('TUSHARE_TOKEN')
-        sync_service = SyncService(db_path=self.db_path, tushare_token='your_tushare_token')
+        tushare_token = os.getenv('TUSHARE_TOKEN') or ""
+        sync_service = SyncService(db_path=self.db_path, tushare_token=tushare_token)
         sync_service.sync_all()
         
-    def _load_data(self):
-        """加载回测所需的数据"""
-        self.daily_quotes = self.quote_repo.get_quotes_by_date_range(
-            self.stock_code
-        )
-        self.daily_indicators = self.indicator_repo.get_indicators_by_date_range(
-            self.stock_code
-        )
-        self.dividends = self.dividend_repo.get_dividends_by_code(self.stock_code)
-        self.financial_reports = self.financial_repo.get_reports_by_code(self.stock_code)
+    def _load_data(self, stock_code: str):
+        """加载指定股票的回测所需数据"""
+        # 获取股票信息和上市日期
+        stock = self.stock_repo.find_by_ts_code(stock_code)
+        if not stock:
+            raise ValueError(f"股票代码 {stock_code} 不存在")
+        self.list_date = stock.list_date
         
-    def _get_price(self, trade_date: date) -> Decimal:
+        self.daily_quotes = self.quote_repo.find_by_code(stock_code)
+        self.daily_indicators = self.indicator_repo.find_by_code(stock_code)
+        self.dividends = self.dividend_repo.find_by_code(stock_code)
+        self.financial_reports = self.financial_repo.get_all(stock_code)
+        self.trades = []
+        
+    def _get_price(self, current_date: date) -> float:
         """获取指定日期的收盘价"""
-        for quote in self.daily_quotes:
-            if quote.trade_date == trade_date:
-                return quote.close
-        return Decimal('0')
+        quote = next((q for q in self.daily_quotes if q.trade_date == current_date), None)
+        if quote:
+            return float(quote.open) + float(quote.close) / 2.0
+        else:
+            return -1.0
         
-    def run(self) -> pd.DataFrame:
-        """运行回测"""
+    def backtest_stock(self, stock_code: str) -> pd.DataFrame:
+        """对单只股票进行回测"""
+        # 加载股票数据
+        self._load_data(stock_code)
+        
         results = []
         current_date = self.start_date
+        if current_date < self.list_date:
+            current_date = self.list_date
         
         while current_date <= self.end_date:
+            print(f"正在回测 {stock_code} 的 {current_date} 日数据")
+            price = self._get_price(current_date)
+            
+            if price < 0:
+                current_date += timedelta(days=1)
+                continue
+            
             # 创建交易决策器
             trader = StockTrader(
                 daily_indicators=self.daily_indicators,
@@ -79,62 +91,99 @@ class StockBacktester:
                 target_date=current_date
             )
             
+            yesterday_date = current_date - timedelta(days=1)
+            return_calculator = ReturnCalculator(self.trades, self.daily_quotes, self.dividends)
+            yesterday_position = return_calculator.calculate_position_shares(yesterday_date)
+            yesterday_capital = self.initial_capital + return_calculator.calculate_net_cash_flow_value(yesterday_date)
+            today_position = yesterday_position
+            today_capital = yesterday_capital
+        
             # 获取交易决策
             action = trader.get_action()
-            price = self._get_price(current_date)
+            if action == TradeAction.BUY:
+                # 全仓买入
+                shares = int(yesterday_capital / Decimal(price) / 100) * 100  # 按手（100股）取整
+                cost = Decimal(price) * shares
+                if shares > 0:
+                    self.trades.append(TradeRecord(
+                        ts_code=stock_code,
+                        trade_date=current_date,
+                        trade_price=Decimal(price),
+                        trade_shares=Decimal(shares),
+                        trade_type='buy',
+                        trade_amount=cost,
+                        commission=Decimal(0),
+                        tax=Decimal(0)
+                    ))
+                    today_position += shares
+                    today_capital -= cost
+            elif action == TradeAction.SELL and yesterday_position > 0:
+                # 全仓卖出
+                proceeds = Decimal(price) * yesterday_position
+                self.trades.append(TradeRecord(
+                        ts_code=stock_code,
+                        trade_date=current_date,
+                        trade_price=Decimal(price),
+                        trade_shares=Decimal(yesterday_position),
+                        trade_type='sell',
+                        trade_amount=proceeds,
+                        commission=Decimal(0),
+                        tax=Decimal(0)
+                    ))
+                today_position += 0
+                today_capital += proceeds
             
-            # 执行交易
-            if price > 0:  # 确保有效的交易价格
-                if action == TradeAction.BUY and self.stock_position == 0:
-                    # 全仓买入
-                    shares = int(self.current_capital / float(price) / 100) * 100  # 按手（100股）取整
-                    cost = float(price) * shares
-                    if cost <= self.current_capital:
-                        self.stock_position = shares
-                        self.current_capital -= cost
-                        
-                elif action == TradeAction.SELL and self.stock_position > 0:
-                    # 全仓卖出
-                    proceeds = float(price) * self.stock_position
-                    self.current_capital += proceeds
-                    self.stock_position = 0
-            
-            # 记录当日结果
-            total_value = self.current_capital + self.stock_position * float(price)
             results.append({
                 'date': current_date,
-                'action': action.value,
-                'price': float(price),
-                'position': self.stock_position,
-                'cash': self.current_capital,
-                'total_value': total_value,
-                'return_rate': (total_value / self.initial_capital - 1) * 100  # 收益率(%)
+                'price': price,
+                'yesterday_position': yesterday_position,
+                'yesterday_capital': yesterday_capital,
+                'today_position': today_position,
+                'today_capital': today_capital,
+                'init_capital': self.initial_capital,
+                'total_value': self.initial_capital + return_calculator.calculate_net_cash_flow_value(current_date) + return_calculator.get_final_value(current_date),
+                'return_rate': return_calculator.calculate_annualized_return(current_date) * 100,
             })
             
             current_date += timedelta(days=1)
-            
+        
+        for trade in self.trades:
+            print(trade)
+        
         return pd.DataFrame(results)
+        
+    def run(self) -> Dict[str, pd.DataFrame]:
+        """运行所有股票的回测"""
+        results = {}
+        stocks = self.stock_repo.find_all()
+        
+        for stock in stocks:
+            print(f"正在回测股票: {stock.ts_code}--{stock.name}")
+            df = self.backtest_stock(stock.ts_code)
+            results[stock.ts_code] = df
+            
+            # 输出回测结果
+            print(f"\n回测结果 - {stock.ts_code}")
+            print(f"回测期间: {self.start_date} 至 {self.end_date}")
+            print(f"初始资金: {self.initial_capital:,.2f}")
+            print(f"期末总值: {df.iloc[-1]['total_value']:,.2f}")
+            print(f"总收益率: {df.iloc[-1]['return_rate']:.2f}%")
+            print("-" * 50)
+            
+            # 保存详细结果到CSV
+            df.to_csv(f'backtest_{stock.ts_code}_{self.start_date}_{self.end_date}.csv', index=False)
+                
+        return results
 
 def main():
     # 设置回测参数
-    stock_code = '000001.SZ'  # 平安银行
-    start_date = date(2022, 1, 1)
-    end_date = date(2022, 12, 31)
+    start_date = date(2010, 1, 1)
+    end_date = date.today() - timedelta(days=1)
     initial_capital = 1000000.0  # 100万初始资金
     
     # 创建回测器并运行
-    backtester = StockBacktester(stock_code, start_date, end_date, initial_capital)
+    backtester = StockBacktester(start_date, end_date, initial_capital)
     results = backtester.run()
-    
-    # 输出回测结果
-    print(f"\n回测结果 - {stock_code}")
-    print(f"回测期间: {start_date} 至 {end_date}")
-    print(f"初始资金: {initial_capital:,.2f}")
-    print(f"期末总值: {results.iloc[-1]['total_value']:,.2f}")
-    print(f"总收益率: {results.iloc[-1]['return_rate']:.2f}%")
-    
-    # 保存详细结果到CSV
-    results.to_csv(f'backtest_{stock_code}_{start_date}_{end_date}.csv', index=False)
-    
+
 if __name__ == '__main__':
     main()

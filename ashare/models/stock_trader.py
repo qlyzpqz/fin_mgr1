@@ -1,11 +1,17 @@
+import time
 from typing import List
 from decimal import Decimal
 from enum import Enum
 from datetime import date
+
+from pandas.tseries.offsets import YearBegin
+
+from ashare.tests.test_stock_repository import repo
 from .financial_report import FinancialReport
 from .daily_indicator import DailyIndicator
 from .daily_quote import DailyQuote
 from .dividend import Dividend
+from datetime import timedelta
 
 class TradeAction(Enum):
     """交易动作枚举"""
@@ -22,7 +28,7 @@ class StockTrader:
                  dividends: List[Dividend],
                  financial_reports: List[FinancialReport],
                  target_date: date,
-                 discount_rate: float = 0.1,  # 折现率默认10%
+                 discount_rate: float = 0.05,  # 折现率默认10%
                  risk_free_rate: float = 0.03):  # 无风险收益率默认3%
         # 筛选目标日期之前的数据
         self.target_date = target_date
@@ -42,7 +48,7 @@ class StockTrader:
             reverse=True
         )
         self.financial_reports = sorted(
-            [report for report in financial_reports if report.report_date <= target_date and report.end_type=="4" ],
+            [report for report in financial_reports if report.report_date <= target_date and report.end_type=="4" and report.financial_indicators and report.income_statement and report.cash_flow_statement],
             key=lambda x: x.report_date, 
             reverse=True
         )
@@ -57,11 +63,14 @@ class StockTrader:
         # 获取最近5个年报
         annual_reports = [
             report for report in self.financial_reports
-            if report.end_type == "4"  # 年报
+            if report.end_type == "4"
         ][:5]
         
         if len(annual_reports) < 5:
             return False
+        
+        # 打印每个年报的ROE
+        print(f"ROE: {[report.financial_indicators.roe for report in annual_reports]}")
             
         # 检查ROE是否都大于15%
         return all(
@@ -75,7 +84,9 @@ class StockTrader:
             return 1.0
             
         # 获取最近5年的PE数据
-        five_years_ago = date.today().replace(year=date.today().year - 5)
+        # five_years_ago = self.target_date.replace(year=self.target_date.year - 5)
+        # TODO
+        five_years_ago = self.target_date - timedelta(days=5*365)
         historical_pe = [
             ind.pe for ind in self.daily_indicators
             if ind.trade_date >= five_years_ago and ind.pe > 0
@@ -83,11 +94,17 @@ class StockTrader:
         
         if not historical_pe:
             return 1.0
-            
+        
+        # 打印PE数据
+        print(f"Historical PE: {historical_pe}")
+        
         current_pe = self.daily_indicators[0].pe
         pe_below_current = sum(1 for pe in historical_pe if pe <= current_pe)
         
-        return pe_below_current / len(historical_pe)
+        pe_percentile = pe_below_current / len(historical_pe)
+        print(f"target_date={self.target_date}, Current PE: {current_pe}, PE percentile: {pe_percentile}")
+        
+        return pe_percentile
 
     def _calculate_growth_rate(self, historical_fcff: List[float]) -> float:
         """计算历史现金流增长率
@@ -118,6 +135,9 @@ class StockTrader:
         latest_report = self.financial_reports[0]
         latest_indicator = self.daily_indicators[0]
         
+        if not latest_report.financial_indicators:
+            return 1.0
+        
         # 使用自由现金流进行估值
         if not latest_report.financial_indicators.fcff:
             return 1.0
@@ -125,14 +145,16 @@ class StockTrader:
         # 获取历史现金流数据
         historical_fcff = []
         for report in self.financial_reports:
-            if report.financial_indicators.fcff:
-                historical_fcff.append(float(report.financial_indicators.fcff))
+            historical_fcff.append(float(report.financial_indicators.fcff))
             if len(historical_fcff) >= 5:  # 只取最近5年数据
                 break
                 
         if len(historical_fcff) < 2:  # 至少需要2个数据点才能计算增长率
             return 1.0
             
+        # 打印historical_fcff
+        print(f"Historical FCFF: {historical_fcff}")
+        
         # 计算增长率
         growth_rate = self._calculate_growth_rate(historical_fcff)
         
@@ -140,19 +162,16 @@ class StockTrader:
         
         # 计算未来5年现金流现值
         present_value = 0
-        for i in range(1, 6):
+        for i in range(1, 5):
             future_cf = fcff * (1 + growth_rate) ** i
             present_value += future_cf / (1 + self.discount_rate) ** i
-            
-        # 永续增长价值（假设永续增长率为3%）
-        # terminal_value = (fcff * (1 + growth_rate) ** 5 * (1 + 0.03)) / (self.discount_rate - 0.03)
-        # terminal_value_pv = terminal_value / (1 + self.discount_rate) ** 5
+        
         terminal_value_pv = fcff * (1 + growth_rate) ** 5 / self.risk_free_rate / (1 + self.discount_rate) ** 5
         
         total_value = present_value + terminal_value_pv
-        current_market_value = float(latest_indicator.total_mv)
+        current_market_value = float(latest_indicator.total_mv * 10000) # 万元转为元
         
-        print(f"fcff: {fcff}, growth_rate: {growth_rate}, risk_free_rate={self.risk_free_rate}, discount_rate={self.discount_rate}, present_value: {present_value}, terminal_value_pv: {terminal_value_pv}, total_value: {total_value}")
+        print(f"fcff: {fcff}, growth_rate: {growth_rate}, risk_free_rate={self.risk_free_rate}, discount_rate={self.discount_rate}, present_value: {present_value}, terminal_value_pv: {terminal_value_pv}, current_market_value={current_market_value}, total_value: {total_value}")
         return current_market_value / total_value
 
     def get_action(self) -> TradeAction:
@@ -165,18 +184,17 @@ class StockTrader:
         # 打印指标
         print(f"ROE条件: {roe_qualified}")
         print(f"PE分位数: {pe_percentile}")
-        print(f"市值比 / DCF估值: {dcf_ratio}")
+        # TODO
+        # print(f"市值 / DCF估值: {dcf_ratio}")
         
         # 买入条件
         if (roe_qualified and 
-            pe_percentile <= 0.15 and 
-            dcf_ratio <= 0.6):
+            pe_percentile <= 0.15):
             return TradeAction.BUY
             
         # 卖出条件
         if (not roe_qualified or 
-            pe_percentile >= 0.85 or 
-            dcf_ratio >= 1.2):  # dcf_ratio <= 0.8 相当于 1/dcf_ratio >= 1.2
+            pe_percentile >= 0.85):  # dcf_ratio <= 0.8 相当于 1/dcf_ratio >= 1.2
             return TradeAction.SELL
             
         # 其他情况持有

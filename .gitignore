@@ -1,3 +1,5 @@
 .env
 venv
 *.db
+*.csv
+.DS_Store
