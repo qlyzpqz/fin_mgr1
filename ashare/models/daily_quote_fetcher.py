@@ -15,7 +15,7 @@ class DailyQuoteFetcher:
 
     def _convert_decimal(self, value) -> Decimal:
         """将数值转换为Decimal类型"""
-        return Decimal(str(value)) if pd.notna(value) else Decimal('0')
+        return Decimal(str(value)) if pd.notna(value) else None
 
     def fetch_daily_quotes(self, ts_codes: str, 
                           start_date: date, 

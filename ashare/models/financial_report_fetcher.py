@@ -34,7 +34,7 @@ class FinancialReportFetcher:
     def _convert_decimal(self, value) -> Optional[Decimal]:
         """转换数值为Decimal类型"""
         if pd.isna(value):
-            return Decimal('0')
+            return None
         return Decimal(str(value))
         
     def fetch_income_statement(self, ts_code: str, start_date: date, end_date: date) -> List[IncomeStatement]:

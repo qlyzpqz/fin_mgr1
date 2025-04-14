@@ -22,8 +22,8 @@ class TestDividendFetcher:
     def test_convert_decimal(self, fetcher):
         """测试数值转换方法"""
         assert fetcher._convert_decimal(10.5) == Decimal('10.5')
-        assert fetcher._convert_decimal(None) == Decimal('0')
-        assert fetcher._convert_decimal(float('nan')) == Decimal('0')
+        assert fetcher._convert_decimal(None) == None
+        assert fetcher._convert_decimal(float('nan')) == None
 
     def test_fetch_dividends(self, fetcher):
         """测试获取分红送股数据"""
@@ -42,16 +42,16 @@ class TestDividendFetcher:
 
         # 检查数据类型
         assert isinstance(first_dividend.ts_code, str)
-        assert isinstance(first_dividend.cash_div, Decimal)
-        assert isinstance(first_dividend.stk_bo_rate, Decimal)
-        assert isinstance(first_dividend.stk_co_rate, Decimal)
-        assert isinstance(first_dividend.base_share, Decimal)
+        assert isinstance(first_dividend.cash_div, Decimal) or first_dividend.cash_div is None
+        assert isinstance(first_dividend.stk_bo_rate, Decimal) or first_dividend.stk_bo_rate is None
+        assert isinstance(first_dividend.stk_co_rate, Decimal) or first_dividend.stk_co_rate is None
+        assert isinstance(first_dividend.base_share, Decimal) or first_dividend.base_share is None
 
         # 检查数据有效性
         assert first_dividend.ts_code == '000001.SZ'
         assert first_dividend.cash_div >= Decimal('0')
-        assert first_dividend.stk_bo_rate >= Decimal('0')
-        assert first_dividend.stk_co_rate >= Decimal('0')
+        assert first_dividend.stk_bo_rate is None or first_dividend.stk_bo_rate >= Decimal('0')
+        assert first_dividend.stk_co_rate is None or first_dividend.stk_co_rate >= Decimal('0')
         
         # 检查日期字段
         if first_dividend.ex_date:

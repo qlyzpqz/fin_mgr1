@@ -46,13 +46,12 @@ class DividendRepository:
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_dividends_ex_date ON dividends(ex_date)')
             conn.commit()
     
+    def _convert_float(self, value) -> Optional[float]:
+        """将值转换为float类型，如果值为None则返回None"""
+        return float(value) if value is not None else None
+    
     def save(self, dividend: Dividend) -> None:
-        """
-        保存分红送股数据
-        
-        Args:
-            dividend: Dividend对象
-        """
+        """保存分红送股数据"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute('''
@@ -64,27 +63,22 @@ class DividendRepository:
                 dividend.end_date.isoformat() if dividend.end_date else None,
                 dividend.ann_date.isoformat() if dividend.ann_date else None,
                 dividend.div_proc,
-                float(dividend.stk_div),
-                float(dividend.stk_bo_rate),
-                float(dividend.stk_co_rate),
-                float(dividend.cash_div),
-                float(dividend.cash_div_tax),
+                self._convert_float(dividend.stk_div),
+                self._convert_float(dividend.stk_bo_rate),
+                self._convert_float(dividend.stk_co_rate),
+                self._convert_float(dividend.cash_div),
+                self._convert_float(dividend.cash_div_tax),
                 dividend.record_date.isoformat() if dividend.record_date else None,
                 dividend.ex_date.isoformat() if dividend.ex_date else None,
                 dividend.pay_date.isoformat() if dividend.pay_date else None,
                 dividend.div_listdate.isoformat() if dividend.div_listdate else None,
                 dividend.imp_ann_date.isoformat() if dividend.imp_ann_date else None,
                 dividend.base_date.isoformat() if dividend.base_date else None,
-                float(dividend.base_share)
+                self._convert_float(dividend.base_share)
             ))
     
     def save_many(self, dividends: List[Dividend]) -> None:
-        """
-        批量保存分红送股数据
-        
-        Args:
-            dividends: Dividend对象列表
-        """
+        """批量保存分红送股数据"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.executemany('''
@@ -97,18 +91,18 @@ class DividendRepository:
                     div.end_date.isoformat() if div.end_date else None,
                     div.ann_date.isoformat() if div.ann_date else None,
                     div.div_proc,
-                    float(div.stk_div),
-                    float(div.stk_bo_rate),
-                    float(div.stk_co_rate),
-                    float(div.cash_div),
-                    float(div.cash_div_tax),
+                    self._convert_float(div.stk_div),
+                    self._convert_float(div.stk_bo_rate),
+                    self._convert_float(div.stk_co_rate),
+                    self._convert_float(div.cash_div),
+                    self._convert_float(div.cash_div_tax),
                     div.record_date.isoformat() if div.record_date else None,
                     div.ex_date.isoformat() if div.ex_date else None,
                     div.pay_date.isoformat() if div.pay_date else None,
                     div.div_listdate.isoformat() if div.div_listdate else None,
                     div.imp_ann_date.isoformat() if div.imp_ann_date else None,
                     div.base_date.isoformat() if div.base_date else None,
-                    float(div.base_share)
+                    self._convert_float(div.base_share)
                 )
                 for div in dividends
             ])

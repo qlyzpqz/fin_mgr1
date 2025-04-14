@@ -35,6 +35,7 @@ def test_fetch_income_statement(fetcher):
     assert statement.end_date <= date(2022, 12, 31)
     assert isinstance(statement.total_revenue, Decimal)
     assert statement.total_revenue > 0
+    print(repr(statement))
 
 def test_fetch_balance_sheet(fetcher):
     """测试获取资产负债表数据"""
@@ -54,6 +55,7 @@ def test_fetch_balance_sheet(fetcher):
     assert sheet.end_date <= date(2022, 12, 31)
     assert isinstance(sheet.total_assets, Decimal)
     assert sheet.total_assets > 0
+    print(repr(sheet))
 
 def test_fetch_cash_flow(fetcher):
     """测试获取现金流量表数据"""
@@ -72,6 +74,7 @@ def test_fetch_cash_flow(fetcher):
     assert statement.end_date >= date(2022, 1, 1)
     assert statement.end_date <= date(2022, 12, 31)
     assert isinstance(statement.n_cashflow_act, Decimal)
+    print(repr(statement))
 
 def test_fetch_financial_indicators(fetcher):
     """测试获取财务指标数据"""
@@ -90,6 +93,7 @@ def test_fetch_financial_indicators(fetcher):
     assert indicator.end_date >= date(2022, 1, 1)
     assert indicator.end_date <= date(2022, 12, 31)
     assert isinstance(indicator.roe, Decimal)
+    print(repr(indicator))
 
 def test_fetch_financial_reports(fetcher):
     """测试获取完整财务报告"""
@@ -117,8 +121,11 @@ def test_fetch_financial_reports(fetcher):
     # 验证关键财务数据
     assert report.income_statement.total_revenue > 0
     assert report.balance_sheet.total_assets > 0
-    assert isinstance(report.cash_flow_statement.free_cashflow, Decimal)
-    assert isinstance(report.financial_indicators.roe, Decimal)
+    if report.cash_flow_statement.free_cashflow:
+        assert isinstance(report.cash_flow_statement.free_cashflow, Decimal)
+    if report.financial_indicators.roe:
+        assert isinstance(report.financial_indicators.roe, Decimal)
+    print(repr(report))
 
 def test_date_conversion(fetcher):
     """测试日期转换方法"""
@@ -129,4 +136,5 @@ def test_decimal_conversion(fetcher):
     """测试数值转换方法"""
     assert fetcher._convert_decimal(100) == Decimal('100')
     assert fetcher._convert_decimal(3.14) == Decimal('3.14')
-    assert fetcher._convert_decimal(None) == Decimal('0')
+    assert fetcher._convert_decimal(None) is None
+    assert fetcher._convert_decimal(float('nan')) is None  # 使用 float('nan') 代替字符串 "NaN"

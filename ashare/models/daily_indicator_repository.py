@@ -83,13 +83,20 @@ class DailyIndicatorRepository:
                 float(indicator.circ_mv)
             ))
     
-    def save_many(self, indicators: List[DailyIndicator]) -> None:
+    def _convert_float(self, value) -> Optional[float]:
         """
-        批量保存每日指标数据
+        将值转换为float类型，如果值为None则返回None
         
         Args:
-            indicators: DailyIndicator对象列表
+            value: 要转换的值
+            
+        Returns:
+            转换后的float值或None
         """
+        return float(value) if value is not None else None
+    
+    def save_many(self, indicators: List[DailyIndicator]) -> None:
+        """批量保存每日指标数据"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.executemany('''
@@ -100,22 +107,22 @@ class DailyIndicatorRepository:
                 (
                     ind.ts_code,
                     ind.trade_date.isoformat(),
-                    float(ind.close),
-                    float(ind.turnover_rate),
-                    float(ind.turnover_rate_f),
-                    float(ind.volume_ratio),
-                    float(ind.pe),
-                    float(ind.pe_ttm),
-                    float(ind.pb),
-                    float(ind.ps),
-                    float(ind.ps_ttm),
-                    float(ind.dv_ratio),
-                    float(ind.dv_ttm),
-                    float(ind.total_share),
-                    float(ind.float_share),
-                    float(ind.free_share),
-                    float(ind.total_mv),
-                    float(ind.circ_mv)
+                    self._convert_float(ind.close),
+                    self._convert_float(ind.turnover_rate),
+                    self._convert_float(ind.turnover_rate_f),
+                    self._convert_float(ind.volume_ratio),
+                    self._convert_float(ind.pe),
+                    self._convert_float(ind.pe_ttm),
+                    self._convert_float(ind.pb),
+                    self._convert_float(ind.ps),
+                    self._convert_float(ind.ps_ttm),
+                    self._convert_float(ind.dv_ratio),
+                    self._convert_float(ind.dv_ttm),
+                    self._convert_float(ind.total_share),
+                    self._convert_float(ind.float_share),
+                    self._convert_float(ind.free_share),
+                    self._convert_float(ind.total_mv),
+                    self._convert_float(ind.circ_mv)
                 )
                 for ind in indicators
             ])

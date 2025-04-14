@@ -1,8 +1,9 @@
-from typing import List
+from typing import List, Optional
 from datetime import date, datetime
 from decimal import Decimal
 import tushare as ts
 import pandas as pd
+import math
 from .daily_indicator import DailyIndicator
 
 class DailyIndicatorFetcher:
@@ -13,9 +14,19 @@ class DailyIndicatorFetcher:
         """将date对象转换为tushare所需的日期字符串格式"""
         return date_obj.strftime('%Y%m%d')
 
-    def _convert_decimal(self, value) -> Decimal:
-        """将数值转换为Decimal类型"""
-        return Decimal(str(value)) if pd.notna(value) else Decimal('0')
+    def _convert_decimal(self, value) -> Optional[Decimal]:
+        """
+        将数值转换为Decimal类型
+        
+        Args:
+            value: 要转换的值
+            
+        Returns:
+            转换后的Decimal值，如果输入为None或NaN则返回None
+        """
+        if value is None or (isinstance(value, float) and math.isnan(value)):
+            return None
+        return Decimal(str(value))
 
     def fetch_daily_indicators(self, ts_code: str, 
                              start_date: date, 

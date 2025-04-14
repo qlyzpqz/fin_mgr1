@@ -20,9 +20,14 @@ class TestDailyIndicatorFetcher:
 
     def test_convert_decimal(self, fetcher):
         """测试数值转换为Decimal方法"""
+        # 测试正常数值转换
         assert fetcher._convert_decimal(10.5) == Decimal('10.5')
-        assert fetcher._convert_decimal(None) == Decimal('0')
-        assert fetcher._convert_decimal(float('nan')) == Decimal('0')
+        
+        # 测试空值转换
+        assert fetcher._convert_decimal(None) is None
+        
+        # 测试NaN值转换
+        assert fetcher._convert_decimal(float('nan')) is None
 
     def test_fetch_daily_indicators(self, fetcher):
         """测试获取每日指标数据"""

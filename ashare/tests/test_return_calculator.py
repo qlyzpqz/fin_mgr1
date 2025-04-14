@@ -94,15 +94,15 @@ class TestReturnCalculator:
         calculator = ReturnCalculator(sample_trades, sample_quotes, sample_dividends)
         
         # 买入后、除权前的持仓
-        shares = calculator._calculate_position_shares(date(2022, 4, 15))
+        shares = calculator.calculate_position_shares(date(2022, 4, 15))
         assert shares == Decimal('1000')
         
         # 除权后的持仓
-        shares = calculator._calculate_position_shares(date(2022, 4, 16))
+        shares = calculator.calculate_position_shares(date(2022, 4, 16))
         assert shares == Decimal('1560')  # 1000 * 1.2 * 1.3
         
         # 卖出后的持仓
-        shares = calculator._calculate_position_shares(date(2022, 6, 30))
+        shares = calculator.calculate_position_shares(date(2022, 6, 30))
         assert shares == Decimal('1060')  # 1560 - 500
 
     def test_calculate_annualized_return(self, sample_trades, sample_quotes, sample_dividends):
@@ -131,7 +131,7 @@ class TestReturnCalculator:
         calculator = ReturnCalculator(sample_trades, sample_quotes, sample_dividends)
         
         # 获取到最后一个交易日的现金流
-        cash_flows = calculator._get_cash_flows(date(2022, 6, 30))
+        cash_flows = calculator._get_cash_flows_with_final_value(date(2022, 6, 30))
         
         # 检查现金流列表基本属性
         assert isinstance(cash_flows, list)
@@ -189,7 +189,7 @@ class TestReturnCalculator:
         ]
         
         calculator = ReturnCalculator(trades, sample_quotes, [])
-        cash_flows = calculator._get_cash_flows(date(2022, 6, 30))
+        cash_flows = calculator.get_cash_flows(date(2022, 6, 30))
         
         # 应该只有买入和卖出两笔现金流
         assert len(cash_flows) == 2
@@ -199,7 +199,7 @@ class TestReturnCalculator:
     def test_get_cash_flows_before_trades(self, sample_trades, sample_quotes, sample_dividends):
         """测试早于交易的日期"""
         calculator = ReturnCalculator(sample_trades, sample_quotes, sample_dividends)
-        cash_flows = calculator._get_cash_flows(date(2022, 1, 3))
+        cash_flows = calculator.get_cash_flows(date(2022, 1, 3))
         
         # 不应该有任何现金流
         assert len(cash_flows) == 0
