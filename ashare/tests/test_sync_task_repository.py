@@ -10,8 +10,8 @@ def db_path(tmp_path):
     db_file = tmp_path / "test_sync.db"
     yield str(db_file)
     # 测试结束后删除数据库文件
-    if os.path.exists(db_file):
-        os.remove(db_file)
+    # if os.path.exists(db_file):
+    #     os.remove(db_file)
 
 @pytest.fixture
 def repository(db_path):

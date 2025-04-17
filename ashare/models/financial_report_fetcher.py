@@ -3,6 +3,9 @@ from decimal import Decimal
 from typing import List, Optional
 import tushare as ts
 import pandas as pd
+import logging
+
+from ashare.models.tushare_api import TushareAPI
 from ..models.financial_report import (
     FinancialReport, IncomeStatement, BalanceSheet,
     CashFlowStatement, FinancialIndicators
@@ -18,10 +21,11 @@ class FinancialReportFetcher:
         Args:
             token: Tushare API token
         """
-        ts.set_token(token)
-        self.pro = ts.pro_api()
+        self.pro = TushareAPI(token)
+        self.logger = logging.getLogger(__name__)
+        self.logger.info("初始化 FinancialReportFetcher")
         
-    def _convert_date(self, date_str: str) -> date:
+    def _convert_date(self, date_str: str) -> Optional[date]:
         """转换日期字符串为date对象"""
         if pd.isna(date_str):
             return None
@@ -138,6 +142,7 @@ class FinancialReportFetcher:
                 'end_net_profit,'
                 'update_flag'
         )
+        self.logger.info(f"获取 {ts_code} 在 {start_date} 到 {end_date} 的利润表数据, df=\n{df}")
         
         statements = []
         for _, row in df.iterrows():
@@ -406,6 +411,7 @@ class FinancialReportFetcher:
                 'fix_assets_total,'
                 'update_flag'
         )
+        self.logger.info(f"获取 {ts_code} 在 {start_date} 到 {end_date} 的资产负债表数据, df=\n{df}")
         
         sheets = []
         for _, row in df.iterrows():
@@ -677,6 +683,7 @@ class FinancialReportFetcher:
                 'beg_bal_cash_equ,'
                 'update_flag'
         )
+        self.logger.info(f"同步现金流量表数据，股票代码：{ts_code}，开始日期：{start_date}，结束日期：{end_date}, df=\n{df}")
         
         statements = []
         for _, row in df.iterrows():
@@ -957,6 +964,7 @@ class FinancialReportFetcher:
                 'rd_exp,'
                 'update_flag'
         )
+        self.logger.info(f"同步财务指标数据完成, ts_code={ts_code}, start_date={start_date}, end_date={end_date}, df=\n{df}")
         
         indicators = []
         for _, row in df.iterrows():
@@ -1149,7 +1157,8 @@ class FinancialReportFetcher:
             start_date = date(1990, 1, 1)
         if not end_date:
             end_date = datetime.today()
-            
+        
+        self.logger.info(f"开始同步股票 {ts_code} 的完整财务报告，日期范围：{start_date} 至 {end_date}")
         income_statements = self.fetch_income_statement(ts_code, start_date, end_date)
         balance_sheets = self.fetch_balance_sheet(ts_code, start_date, end_date)
         cash_flows = self.fetch_cash_flow(ts_code, start_date, end_date)
@@ -1158,9 +1167,12 @@ class FinancialReportFetcher:
         # 按报告期和类型匹配各报表数据
         reports = []
         for statement in income_statements:
+            if not (statement.report_type and statement.end_date and statement.ann_date and statement.end_type):
+                continue
             report = FinancialReport(
                 ts_code=ts_code,
                 report_date=statement.end_date,
+                ann_date=statement.ann_date,
                 report_type=statement.report_type,
                 end_type=statement.end_type,
                 income_statement=statement,

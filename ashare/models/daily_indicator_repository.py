@@ -185,23 +185,27 @@ class DailyIndicatorRepository:
     
     def _row_to_indicator(self, row: tuple) -> DailyIndicator:
         """将数据库行转换为DailyIndicator对象"""
+        def to_decimal(value) -> Optional[Decimal]:
+            """将值转换为Decimal，处理None值的情况"""
+            return Decimal(str(value)) if value is not None else None
+            
         return DailyIndicator(
             ts_code=row[0],
             trade_date=datetime.fromisoformat(row[1]).date(),
-            close=Decimal(str(row[2])),
-            turnover_rate=Decimal(str(row[3])),
-            turnover_rate_f=Decimal(str(row[4])),
-            volume_ratio=Decimal(str(row[5])),
-            pe=Decimal(str(row[6])),
-            pe_ttm=Decimal(str(row[7])),
-            pb=Decimal(str(row[8])),
-            ps=Decimal(str(row[9])),
-            ps_ttm=Decimal(str(row[10])),
-            dv_ratio=Decimal(str(row[11])),
-            dv_ttm=Decimal(str(row[12])),
-            total_share=Decimal(str(row[13])),
-            float_share=Decimal(str(row[14])),
-            free_share=Decimal(str(row[15])),
-            total_mv=Decimal(str(row[16])),
-            circ_mv=Decimal(str(row[17]))
+            close=to_decimal(row[2]),
+            turnover_rate=to_decimal(row[3]),
+            turnover_rate_f=to_decimal(row[4]),
+            volume_ratio=to_decimal(row[5]),
+            pe=to_decimal(row[6]),
+            pe_ttm=to_decimal(row[7]),
+            pb=to_decimal(row[8]),
+            ps=to_decimal(row[9]),
+            ps_ttm=to_decimal(row[10]),
+            dv_ratio=to_decimal(row[11]),
+            dv_ttm=to_decimal(row[12]),
+            total_share=to_decimal(row[13]),
+            float_share=to_decimal(row[14]),
+            free_share=to_decimal(row[15]),
+            total_mv=to_decimal(row[16]),
+            circ_mv=to_decimal(row[17])
         )

@@ -165,21 +165,25 @@ class DividendRepository:
     
     def _row_to_dividend(self, row: tuple) -> Dividend:
         """将数据库行转换为Dividend对象"""
+        def to_decimal(value) -> Optional[Decimal]:
+            """将值转换为Decimal，处理None值的情况"""
+            return Decimal(str(value)) if value is not None else None
+            
         return Dividend(
             ts_code=row[0],
             end_date=datetime.fromisoformat(row[1]).date() if row[1] else None,
             ann_date=datetime.fromisoformat(row[2]).date() if row[2] else None,
             div_proc=row[3],
-            stk_div=Decimal(str(row[4])),
-            stk_bo_rate=Decimal(str(row[5])),
-            stk_co_rate=Decimal(str(row[6])),
-            cash_div=Decimal(str(row[7])),
-            cash_div_tax=Decimal(str(row[8])),
+            stk_div=to_decimal(row[4]),
+            stk_bo_rate=to_decimal(row[5]),
+            stk_co_rate=to_decimal(row[6]),
+            cash_div=to_decimal(row[7]),
+            cash_div_tax=to_decimal(row[8]),
             record_date=datetime.fromisoformat(row[9]).date() if row[9] else None,
             ex_date=datetime.fromisoformat(row[10]).date() if row[10] else None,
             pay_date=datetime.fromisoformat(row[11]).date() if row[11] else None,
             div_listdate=datetime.fromisoformat(row[12]).date() if row[12] else None,
             imp_ann_date=datetime.fromisoformat(row[13]).date() if row[13] else None,
             base_date=datetime.fromisoformat(row[14]).date() if row[14] else None,
-            base_share=Decimal(str(row[15]))
+            base_share=to_decimal(row[15])
         )

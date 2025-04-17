@@ -1,19 +1,24 @@
 from typing import List, Optional
 from datetime import date, datetime
 from decimal import Decimal
+from pandas.core.computation.ops import Op
 import tushare as ts
 import pandas as pd
 from .daily_quote import DailyQuote
+from .tushare_api import TushareAPI
+import logging
 
 class DailyQuoteFetcher:
     def __init__(self, api_token: str):
-        self.api = ts.pro_api(api_token)
+        self.api = TushareAPI(api_token)
+        self.logger = logging.getLogger(__name__)
+        self.logger.info("初始化 DailyQuoteFetcher")
 
     def _convert_date(self, date_obj: date) -> str:
         """将date对象转换为tushare所需的日期字符串格式"""
         return date_obj.strftime('%Y%m%d')
 
-    def _convert_decimal(self, value) -> Decimal:
+    def _convert_decimal(self, value) -> Optional[Decimal]:
         """将数值转换为Decimal类型"""
         return Decimal(str(value)) if pd.notna(value) else None
 
@@ -41,6 +46,7 @@ class DailyQuoteFetcher:
             start_date=start_date_str,
             end_date=end_date_str
         )
+        self.logger.info(f"获取 {ts_codes} 在 {start_date} 到 {end_date} 的日行情数据, df=\n{df}")
         
         # 转换为DailyQuote对象列表
         quotes = []

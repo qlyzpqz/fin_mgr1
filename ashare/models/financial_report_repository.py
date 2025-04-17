@@ -22,6 +22,7 @@ class FinancialReportRepository:
                 CREATE TABLE IF NOT EXISTS financial_reports (
                     ts_code TEXT NOT NULL,
                     report_date DATE NOT NULL,
+                    ann_date DATE,
                     report_type TEXT NOT NULL,
                     end_type TEXT NOT NULL,
                     income_statement TEXT,
@@ -31,19 +32,20 @@ class FinancialReportRepository:
                     PRIMARY KEY (ts_code, report_date, report_type)
                 )
             ''')
-    
+
     def save(self, report: FinancialReport) -> None:
         """保存财务报告"""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute('''
                 INSERT OR REPLACE INTO financial_reports (
-                    ts_code, report_date, report_type, end_type,
+                    ts_code, report_date, ann_date, report_type, end_type,
                     income_statement, balance_sheet,
                     cash_flow_statement, financial_indicators
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 report.ts_code,
                 report.report_date.isoformat(),
+                report.ann_date.isoformat() if report.ann_date else None,
                 report.report_type,
                 report.end_type,
                 report.income_statement.to_json() if report.income_statement else None,
@@ -51,20 +53,21 @@ class FinancialReportRepository:
                 report.cash_flow_statement.to_json() if report.cash_flow_statement else None,
                 report.financial_indicators.to_json() if report.financial_indicators else None
             ))
-    
+
     def save_many(self, reports: List[FinancialReport]) -> None:
         """批量保存财务报告"""
         with sqlite3.connect(self.db_path) as conn:
             for report in reports:
                 conn.execute('''
                     INSERT OR REPLACE INTO financial_reports (
-                        ts_code, report_date, report_type, end_type,
+                        ts_code, report_date, ann_date, report_type, end_type,
                         income_statement, balance_sheet,
                         cash_flow_statement, financial_indicators
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     report.ts_code,
                     report.report_date.isoformat(),
+                    report.ann_date.isoformat() if report.ann_date else None,
                     report.report_type,
                     report.end_type,
                     report.income_statement.to_json() if report.income_statement else None,
@@ -73,12 +76,15 @@ class FinancialReportRepository:
                     report.financial_indicators.to_json() if report.financial_indicators else None
                 ))
             conn.commit()
-    
+
     def get(self, ts_code: str, report_date: date, report_type: str) -> Optional[FinancialReport]:
         """获取财务报告"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute('''
-                SELECT * FROM financial_reports 
+                SELECT ts_code, report_date, ann_date, report_type, end_type,
+                       income_statement, balance_sheet, cash_flow_statement, 
+                       financial_indicators
+                FROM financial_reports 
                 WHERE ts_code = ? AND report_date = ? AND report_type = ?
             ''', (ts_code, report_date.isoformat(), report_type))
             row = cursor.fetchone()
@@ -89,28 +95,35 @@ class FinancialReportRepository:
             return FinancialReport(
                 ts_code=row[0],
                 report_date=date.fromisoformat(row[1]),
-                report_type=row[2],
-                end_type=row[3],
-                income_statement=IncomeStatement.from_json(row[4]) if row[4] else None,
-                balance_sheet=BalanceSheet.from_json(row[5]) if row[5] else None,
-                cash_flow_statement=CashFlowStatement.from_json(row[6]) if row[6] else None,
-                financial_indicators=FinancialIndicators.from_json(row[7]) if row[7] else None
+                ann_date=date.fromisoformat(row[2]) if row[2] else None,
+                report_type=row[3],
+                end_type=row[4],
+                income_statement=IncomeStatement.from_json(row[5]) if row[5] else None,
+                balance_sheet=BalanceSheet.from_json(row[6]) if row[6] else None,
+                cash_flow_statement=CashFlowStatement.from_json(row[7]) if row[7] else None,
+                financial_indicators=FinancialIndicators.from_json(row[8]) if row[8] else None
             )
     
     def get_all(self, ts_code: str) -> List[FinancialReport]:
         """获取指定股票代码的所有财务报告"""
         with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute('SELECT * FROM financial_reports WHERE ts_code = ?', (ts_code,))
+            cursor = conn.execute('''
+                SELECT ts_code, report_date, ann_date, report_type, end_type,
+                       income_statement, balance_sheet, cash_flow_statement, 
+                       financial_indicators 
+                FROM financial_reports 
+                WHERE ts_code = ?''', (ts_code,))
             return [
                 FinancialReport(
                     ts_code=row[0],
                     report_date=date.fromisoformat(row[1]),
-                    report_type=row[2],
-                    end_type=row[3],
-                    income_statement=IncomeStatement.from_json(row[4]) if row[4] else None,
-                    balance_sheet=BalanceSheet.from_json(row[5]) if row[5] else None,
-                    cash_flow_statement=CashFlowStatement.from_json(row[6]) if row[6] else None,
-                    financial_indicators=FinancialIndicators.from_json(row[7]) if row[7] else None
+                    ann_date=date.fromisoformat(row[2]) if row[2] else None,
+                    report_type=row[3],
+                    end_type=row[4],
+                    income_statement=IncomeStatement.from_json(row[5]) if row[5] else None,
+                    balance_sheet=BalanceSheet.from_json(row[6]) if row[6] else None,
+                    cash_flow_statement=CashFlowStatement.from_json(row[7]) if row[7] else None,
+                    financial_indicators=FinancialIndicators.from_json(row[8]) if row[8] else None
                 )
                 for row in cursor.fetchall()
             ]

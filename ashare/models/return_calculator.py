@@ -6,12 +6,14 @@ from scipy.optimize import newton
 from .trade_record import TradeRecord
 from .daily_quote import DailyQuote
 from .dividend import Dividend
+import logging
 
 class ReturnCalculator:
     def __init__(self, trades: List[TradeRecord], quotes: List[DailyQuote], dividends: List[Dividend]):
         self.trades = sorted(trades, key=lambda x: x.trade_date)  # 按交易日期排序
         self.quotes = {q.trade_date: q for q in quotes}  # 转换为日期索引的字典
-        self.dividends = sorted(dividends, key=lambda x: x.ex_date if x.ex_date else date.max)  # 按除权日排序
+        self.dividends = sorted([d for d in dividends if d.div_proc == '实施'], key=lambda x: x.base_date if x.base_date else date.max)  # 按除权日排序
+        self.logger = logging.getLogger(__name__)
 
     def calculate_position_shares(self, current_date: date) -> Decimal:
         """计算指定日期的持仓数量（考虑送转股）"""
@@ -24,8 +26,8 @@ class ReturnCalculator:
                 events.append(('trade', trade.trade_date, trade))
                 
         for div in self.dividends:
-            if div.ex_date and div.ex_date <= current_date:
-                events.append(('dividend', div.ex_date, div))
+            if div.base_date and div.base_date <= current_date and div.div_proc=='实施':
+                events.append(('dividend', div.base_date, div))
         
         # 按日期排序
         events.sort(key=lambda x: x[1])
@@ -39,9 +41,11 @@ class ReturnCalculator:
                     shares -= event.trade_shares
             else:  # dividend
                 # 送股
-                shares += shares * event.stk_bo_rate
+                if event.stk_bo_rate:
+                    shares += shares * event.stk_bo_rate
                 # 转增
-                shares += shares * event.stk_co_rate
+                if event.stk_co_rate:
+                    shares += shares * event.stk_co_rate
                 
         return shares
     
@@ -69,15 +73,15 @@ class ReturnCalculator:
             else:
                 # 卖出为正现金流（收回）
                 amount = trade.trade_amount - trade.commission - trade.tax
-            cash_flows.append((trade.trade_date, amount))
+            cash_flows.append((trade.trade_date, amount, '交易'))
 
         # 添加分红现金流
         for div in self.dividends:
-            if not div.ex_date or div.ex_date > end_date:
+            if not div.base_date or div.base_date > end_date:
                 continue
-            shares = self.calculate_position_shares(div.ex_date - timedelta(days=1))
+            shares = self.calculate_position_shares(div.base_date)
             if shares > Decimal('0'):
-                cash_flows.append((div.pay_date or div.ex_date, shares * div.cash_div))
+                cash_flows.append((div.pay_date or div.ex_date, shares * div.cash_div, '分红'))
 
         return sorted(cash_flows, key=lambda x: x[0])
     
@@ -113,6 +117,7 @@ class ReturnCalculator:
 
         try:
             rate = newton(xnpv, x0=0.1, fprime=xnpv_deriv, maxiter=1000)
+            self.logger.info(f"cash_flows={cash_flows}, XIRR: {rate}")  # Log the rate inf
             return Decimal(str(rate))
         except:
             return Decimal('0')
@@ -136,4 +141,6 @@ class ReturnCalculator:
         if not cash_flows:
             return Decimal('0')
             
-        return self._xirr(cash_flows)
+        rate = self._xirr(cash_flows)
+        
+        return rate

@@ -1281,6 +1281,7 @@ class FinancialReport:
     """财务年报"""
     ts_code: str                                    # TS代码
     report_date: date                              # 报告日期
+    ann_date: date                                 # 公告日期
     report_type: str                              # 报告类型
     end_type: str                                 # 报告期类型
     income_statement: IncomeStatement               # 利润表
@@ -1293,6 +1294,7 @@ class FinancialReport:
         data = {
             'ts_code': self.ts_code,
             'report_date': self.report_date.isoformat(),
+            'ann_date': self.ann_date.isoformat(),
             'report_type': self.report_type,
             'end_type': self.end_type,
             'income_statement': self.income_statement.to_json() if self.income_statement else None,

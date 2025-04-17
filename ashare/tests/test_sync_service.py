@@ -7,9 +7,9 @@ from ..models.sync_type import SyncType
 from ..models.sync_task import SyncTask
 
 @pytest.fixture
-def db_path(tmp_path):
+def db_path():
     """创建临时数据库文件"""
-    db_file = tmp_path / "test_sync.db"
+    db_file = "./test_sync.db"
     yield str(db_file)
     # 测试结束后删除数据库文件
     if os.path.exists(db_file):
@@ -27,7 +27,7 @@ def tushare_token():
 @pytest.fixture
 def sync_service(db_path, tushare_token):
     """创建 SyncService 实例"""
-    return SyncService(db_path, tushare_token)
+    return SyncService(db_path, tushare_token,ts_codes=['002001.SZ'])
 
 def test_sync_stock_list(sync_service):
     """测试同步股票列表"""

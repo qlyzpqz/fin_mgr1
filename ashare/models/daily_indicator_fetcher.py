@@ -4,11 +4,16 @@ from decimal import Decimal
 import tushare as ts
 import pandas as pd
 import math
+
+from ashare.models.tushare_api import TushareAPI
 from .daily_indicator import DailyIndicator
+import logging
 
 class DailyIndicatorFetcher:
     def __init__(self, api_token: str):
-        self.api = ts.pro_api(api_token)
+        self.api = TushareAPI(api_token)
+        self.logger = logging.getLogger(__name__)
+        self.logger.info("初始化 DailyIndicatorFetcher")
 
     def _convert_date(self, date_obj: date) -> str:
         """将date对象转换为tushare所需的日期字符串格式"""
@@ -55,6 +60,7 @@ class DailyIndicatorFetcher:
                   'pe,pe_ttm,pb,ps,ps_ttm,dv_ratio,dv_ttm,total_share,float_share,'
                   'free_share,total_mv,circ_mv'
         )
+        self.logger.info(f"获取 {ts_code} 在 {start_date} 到 {end_date} 的每日指标数据, df=\n{df}")
         
         # 转换为DailyIndicator对象列表
         indicators = []

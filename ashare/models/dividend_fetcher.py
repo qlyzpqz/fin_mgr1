@@ -1,21 +1,26 @@
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 from decimal import Decimal
 import tushare as ts
 import pandas as pd
+
+from ashare.models.tushare_api import TushareAPI
 from .dividend import Dividend
+import logging
 
 class DividendFetcher:
     def __init__(self, api_token: str):
-        self.api = ts.pro_api(api_token)
+        self.api = TushareAPI(api_token)
+        self.logger = logging.getLogger(__name__)
+        self.logger.info("初始化 DividendFetcher")
 
-    def _convert_date(self, date_str: str) -> datetime.date:
+    def _convert_date(self, date_str: str) -> Optional[datetime.date]:
         """转换日期字符串为date对象"""
         if not date_str or pd.isna(date_str):
             return None
         return datetime.strptime(str(date_str), '%Y%m%d').date()
 
-    def _convert_decimal(self, value) -> Decimal:
+    def _convert_decimal(self, value) -> Optional[Decimal]:
         """将数值转换为Decimal类型"""
         return Decimal(str(value)) if pd.notna(value) else None
 
@@ -36,6 +41,7 @@ class DividendFetcher:
                   'cash_div,cash_div_tax,record_date,ex_date,pay_date,div_listdate,'
                   'imp_ann_date,base_date,base_share'
         )
+        self.logger.info(f"获取 {ts_code} 的所有分红送股数据, df=\n{df}")
         
         # 转换为Dividend对象列表
         dividends = []
