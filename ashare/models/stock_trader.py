@@ -13,6 +13,7 @@ from .daily_quote import DailyQuote
 from .dividend import Dividend
 from datetime import timedelta
 import logging
+from ashare.logger.setup_logger import get_logger
 
 class TradeAction(Enum):
     """交易动作枚举"""
@@ -55,7 +56,7 @@ class StockTrader:
         )
         self.discount_rate = discount_rate
         self.risk_free_rate = risk_free_rate
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger()
         self.logger.info("初始化 StockTrader")
 
     def _check_roe_condition(self) -> bool:

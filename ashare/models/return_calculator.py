@@ -7,13 +7,14 @@ from .trade_record import TradeRecord
 from .daily_quote import DailyQuote
 from .dividend import Dividend
 import logging
+from ashare.logger.setup_logger import get_logger
 
 class ReturnCalculator:
     def __init__(self, trades: List[TradeRecord], quotes: List[DailyQuote], dividends: List[Dividend]):
         self.trades = sorted(trades, key=lambda x: x.trade_date)  # 按交易日期排序
         self.quotes = {q.trade_date: q for q in quotes}  # 转换为日期索引的字典
         self.dividends = sorted([d for d in dividends if d.div_proc == '实施'], key=lambda x: x.base_date if x.base_date else date.max)  # 按除权日排序
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger()
 
     def calculate_position_shares(self, current_date: date) -> Decimal:
         """计算指定日期的持仓数量（考虑送转股）"""

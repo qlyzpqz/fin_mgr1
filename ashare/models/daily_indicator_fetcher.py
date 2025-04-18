@@ -8,11 +8,12 @@ import math
 from ashare.models.tushare_api import TushareAPI
 from .daily_indicator import DailyIndicator
 import logging
+from ashare.logger.setup_logger import get_logger
 
 class DailyIndicatorFetcher:
     def __init__(self, api_token: str):
         self.api = TushareAPI(api_token)
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger()
         self.logger.info("初始化 DailyIndicatorFetcher")
 
     def _convert_date(self, date_obj: date) -> str:

@@ -3,6 +3,7 @@ import time
 import logging
 from typing import Any, Callable
 import tushare as ts
+from ashare.logger.setup_logger import get_logger
 
 class TushareAPI:
     def __init__(self, api_token: str, max_retries: int = 3, retry_delay: float = 60.0):
@@ -17,7 +18,7 @@ class TushareAPI:
         self.api = ts.pro_api(api_token)
         self.max_retries = max_retries
         self.retry_delay = retry_delay
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger()
 
     def __getattr__(self, name: str) -> Callable:
         """拦截所有对原始 pro_api 对象的方法调用"""

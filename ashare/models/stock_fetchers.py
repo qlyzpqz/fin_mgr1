@@ -4,13 +4,14 @@ from ashare.models.stock import Stock  # 修改这行，去掉多余的 .ashare
 from datetime import datetime, date
 import tushare as ts
 import logging
+from ashare.logger.setup_logger import get_logger
 
 from ashare.models.tushare_api import TushareAPI
 
 class AShareFetcher():
     def __init__(self, api_token: str):
         self.api = TushareAPI(api_token)
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger()
         self.logger.info("初始化 AShareFetcher")
 
     def _convert_date(self, date_str: str) -> Optional[date]:

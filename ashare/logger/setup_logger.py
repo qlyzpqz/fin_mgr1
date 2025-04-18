@@ -2,7 +2,7 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 
-def setup_logging(log_level=logging.INFO):
+def setup_logger(log_level=logging.INFO):
     """初始化日志配置"""
     # 创建日志目录
     log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')
@@ -40,4 +40,9 @@ def setup_logging(log_level=logging.INFO):
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
     
+    return logger
+
+logger = setup_logger()
+
+def get_logger():
     return logger

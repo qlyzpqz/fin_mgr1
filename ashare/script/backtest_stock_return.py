@@ -14,7 +14,7 @@ from ashare.models.financial_report_repository import FinancialReportRepository
 from ashare.models.return_calculator import ReturnCalculator
 import os
 import logging
-from ashare.script.setup_log import setup_logging
+from ashare.logger.setup_logger import get_logger
 
 from ashare.models.trade_record import TradeRecord
 
@@ -26,7 +26,8 @@ class StockBacktester:
         self.start_date = start_date
         self.end_date = end_date
         self.initial_capital = Decimal(initial_capital)
-        self.logger = logging.getLogger(__name__)
+        # 使用正确的logger名称
+        self.logger = get_logger()
         self.logger.info(f"初始化 StockBacktester, 回测期间: {start_date} 至 {end_date}, 初始资金: {initial_capital}")
         
         # 初始化数据仓库
@@ -206,8 +207,7 @@ def main():
     
     # 创建回测器并运行
     backtester = StockBacktester(start_date, end_date, initial_capital)
-    results = backtester.run()
+    esults = backtester.run()
 
 if __name__ == '__main__':
-    setup_logging()
     main()

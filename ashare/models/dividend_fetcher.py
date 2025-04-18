@@ -7,11 +7,12 @@ import pandas as pd
 from ashare.models.tushare_api import TushareAPI
 from .dividend import Dividend
 import logging
+from ashare.logger.setup_logger import get_logger
 
 class DividendFetcher:
     def __init__(self, api_token: str):
         self.api = TushareAPI(api_token)
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger()
         self.logger.info("初始化 DividendFetcher")
 
     def _convert_date(self, date_str: str) -> Optional[datetime.date]:

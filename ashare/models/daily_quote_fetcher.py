@@ -7,11 +7,12 @@ import pandas as pd
 from .daily_quote import DailyQuote
 from .tushare_api import TushareAPI
 import logging
+from ashare.logger.setup_logger import get_logger
 
 class DailyQuoteFetcher:
     def __init__(self, api_token: str):
         self.api = TushareAPI(api_token)
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger()
         self.logger.info("初始化 DailyQuoteFetcher")
 
     def _convert_date(self, date_obj: date) -> str:
