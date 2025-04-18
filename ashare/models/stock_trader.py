@@ -75,7 +75,7 @@ class StockTrader:
         # 打印每个年报的ROE
         self.logger.info(f"ROE: {[report.financial_indicators.roe for report in annual_reports]}")
             
-        # 检查ROE是否都大于15%
+        # 检查ROE是否都大于20%
         return all(
             report.financial_indicators.roe >= Decimal('20.0')
             for report in annual_reports
@@ -155,7 +155,8 @@ class StockTrader:
         # 获取历史现金流数据
         historical_fcff = []
         for report in self.financial_reports:
-            historical_fcff.append(float(report.income_statement.get(income_item_name)))
+            fcff = report.calculate_fcff()
+            historical_fcff.append(float(fcff if fcff else 0))
             if len(historical_fcff) >= 5:  # 只取最近5年数据
                 break
                 
@@ -169,15 +170,16 @@ class StockTrader:
         # 计算增长率
         growth_rate = self._calculate_growth_rate(historical_fcff)
         
-        fcff = float(latest_report.income_statement.get(income_item_name))
+        fcff = float(latest_report.calculate_fcff())
         
         # 计算未来5年现金流现值
+        kYearCount = 3
         present_value = 0
-        for i in range(1, 5):
+        for i in range(1, kYearCount):
             future_cf = fcff * (1 + growth_rate) ** i
             present_value += future_cf / (1 + self.discount_rate) ** i
         
-        terminal_value_pv = fcff * (1 + growth_rate) ** 5 / self.risk_free_rate / (1 + self.discount_rate) ** 5
+        terminal_value_pv = fcff * (1 + growth_rate) ** kYearCount / self.risk_free_rate / (1 + self.discount_rate) ** kYearCount
         
         total_value = present_value + terminal_value_pv
         current_market_value = float(latest_indicator.total_mv * 10000) # 万元转为元
@@ -200,14 +202,14 @@ class StockTrader:
         # 买入条件
         if (roe_qualified and 
             # pe_percentile <= 0.15 and
-            dcf_ratio <= 0.6):
+            dcf_ratio <= 0.5):
             self.logger.info(f"日期：{self.target_date}, 买入")
             return TradeAction.BUY
             
         # 卖出条件
         if (not roe_qualified
             # pe_percentile >= 0.85
-            or dcf_ratio >= 1.2):  # dcf_ratio <= 0.8 相当于 1/dcf_ratio >= 1.2
+            or dcf_ratio >= 1.3):  # dcf_ratio <= 0.8 相当于 1/dcf_ratio >= 1.2
             self.logger.info(f"日期：{self.target_date}, 卖出")
             return TradeAction.SELL
             

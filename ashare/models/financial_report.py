@@ -1328,3 +1328,25 @@ class FinancialReport:
             lines.extend([repr(self.financial_indicators), ""])
         
         return "\n".join(lines)
+    
+    def calculate_fcff(self) -> Optional[Decimal]:
+        """
+        计算企业自由现金流（FCFF: Free Cash Flow to Firm）
+        FCFF = 经营活动现金流量净额 - 折旧与摊销
+        """
+        if not self.cash_flow_statement or not self.financial_indicators:
+            return None
+            
+        # 获取经营活动现金流量净额
+        operating_cash_flow = self.cash_flow_statement.get('经营活动产生的现金流量净额')
+        if operating_cash_flow is None:
+            return None
+            
+        # 获取折旧与摊销
+        daa = Decimal('0')
+        if not self.financial_indicators.get('折旧与摊销'):
+            daa = self.financial_indicators.get('折旧与摊销')
+        
+        # 计算FCFF
+        fcff = operating_cash_flow - daa
+        return fcff
