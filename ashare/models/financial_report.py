@@ -3,6 +3,7 @@ from decimal import Decimal
 from datetime import date, datetime
 from typing import Optional
 import json
+from ashare.logger.setup_logger import get_logger
 
 @dataclass
 class IncomeStatement:
@@ -1288,6 +1289,7 @@ class FinancialReport:
     balance_sheet: BalanceSheet                    # 资产负债表
     cash_flow_statement: CashFlowStatement         # 现金流量表
     financial_indicators: FinancialIndicators      # 财务指标
+    logger = get_logger()
 
     def to_json(self) -> str:
         """将财务报告对象转换为JSON字符串"""
@@ -1344,9 +1346,19 @@ class FinancialReport:
             
         # 获取折旧与摊销
         daa = Decimal('0')
-        if not self.financial_indicators.get('折旧与摊销'):
+        if self.financial_indicators.get('折旧与摊销') is not None:
             daa = self.financial_indicators.get('折旧与摊销')
+            
+        # 财务费用
+        financial_cost = Decimal('0')
+        if self.cash_flow_statement.get('财务费用') is not None:
+            financial_cost = self.cash_flow_statement.get('财务费用')
+            
+        rate = Decimal('1')
+        if(self.balance_sheet.get('股东权益合计(不含少数股东权益)') is not None) and (self.balance_sheet.get('股东权益合计(含少数股东权益)') is not None):
+            rate = self.balance_sheet.get('股东权益合计(不含少数股东权益)') / self.balance_sheet.get('股东权益合计(含少数股东权益)')
         
+        self.logger.info(f"calculate_fcff: operating_cash_flow: {operating_cash_flow}, daa: {daa}, financial_cost: {financial_cost}, rate: {rate}")
         # 计算FCFF
-        fcff = operating_cash_flow - daa
+        fcff = (operating_cash_flow - daa - financial_cost) * rate
         return fcff

@@ -45,7 +45,7 @@ class StockBacktester:
         """同步股票数据"""
         self.logger.info("开始同步数据")
         tushare_token = os.getenv('TUSHARE_TOKEN') or ""
-        sync_service = SyncService(db_path=self.db_path, tushare_token=tushare_token, ts_codes=["600519.SH", "000568.SZ", "000858.SZ", "000333.SZ"])
+        sync_service = SyncService(db_path=self.db_path, tushare_token=tushare_token, ts_codes=["600519.SH", "000568.SZ", "000858.SZ", "000333.SZ", "600702.SH", "002415.SZ", "300750.SZ", "600603.SH", "002089.SZ"])
         sync_service.sync_all()
         
     def _load_data(self, stock_code: str):
@@ -106,10 +106,11 @@ class StockBacktester:
             yesterday_capital = self.initial_capital + yesterday_return_calculator.calculate_net_cash_flow_value(yesterday_date)
             today_position = yesterday_position
             today_capital = yesterday_capital
+            operation = '无操作'
         
             # 获取交易决策
-            action = trader.get_action()
-            if action == TradeAction.BUY:
+            action_result = trader.get_action()
+            if action_result.action == TradeAction.BUY:
                 # 全仓买入
                 shares = int(yesterday_capital / Decimal(price) / 100) * 100  # 按手（100股）取整
                 cost = Decimal(price) * shares
@@ -126,7 +127,8 @@ class StockBacktester:
                     ))
                     today_position += shares
                     today_capital -= cost
-            elif action == TradeAction.SELL and yesterday_position > 0:
+                    operation = f'买入{shares}股, 价格{price:.2f}'
+            elif action_result.action == TradeAction.SELL and yesterday_position > 0:
                 # 全仓卖出
                 proceeds = Decimal(price) * yesterday_position
                 self.trades.append(TradeRecord(
@@ -141,7 +143,8 @@ class StockBacktester:
                     ))
                 today_position += 0
                 today_capital += proceeds
-            
+                operation = f'卖出{yesterday_position}股, 价格{price:.2f}'
+                 
             today_return_calculator = ReturnCalculator(self.trades, self.daily_quotes, self.dividends)
             results.append({
                 'date': current_date,
@@ -155,16 +158,20 @@ class StockBacktester:
                 'final_value': float(today_return_calculator.get_final_value(current_date)),
                 'total_value': float(self.initial_capital + today_return_calculator.calculate_net_cash_flow_value(current_date) + today_return_calculator.get_final_value(current_date)),
                 'return_rate': today_return_calculator.calculate_annualized_return(current_date) * 100,
+                'operation': operation,
+                'recomm_action': action_result.action.value,
+                'roe_debug_info': action_result.roe_debug_info,
+                'dcf_ratio_debug_info': action_result.dcf_ratio_debug_info,
             })
             
             current_date += timedelta(days=1)
         
         return_calculator = ReturnCalculator(self.trades, self.daily_quotes, self.dividends)
         cash_flows = return_calculator.get_cash_flows(self.end_date)
-        print(cash_flows)
+        self.logger.info(cash_flows)
         
         for trade in self.trades:
-            print(trade)
+            self.logger.info(f"交易记录: {trade}")
         
         return pd.DataFrame(results)
         
@@ -175,28 +182,25 @@ class StockBacktester:
         
         for stock in stocks:
             self.logger.info(f"开始回测股票: {stock.ts_code}--{stock.name}")
-            print(f"正在回测股票: {stock.ts_code}--{stock.name}")
             df = self.backtest_stock(stock.ts_code)
             results[stock.ts_code] = df
             
-            # 输出回测结果
-            print(f"\n回测结果 - {stock.ts_code}")
-            print(f"回测期间: {self.start_date} 至 {self.end_date}")
-            print(f"初始资金: {self.initial_capital:,.2f}")
-            print(f"期末总值: {df.iloc[-1]['total_value']:,.2f}")
-            print(f"总收益率: {df.iloc[-1]['return_rate']:.2f}%")
-            print("-" * 50)
-            
-            self.logger.info(f"回测结果 - {stock.ts_code}")
+            self.logger.info(f"回测结果 - {stock.ts_code}--{stock.name}")
             self.logger.info(f"回测期间: {self.start_date} 至 {self.end_date}")
             self.logger.info(f"初始资金: {self.initial_capital:,.2f}")
             self.logger.info(f"期末总值: {df.iloc[-1]['total_value']:,.2f}")
             self.logger.info(f"总收益率: {df.iloc[-1]['return_rate']:.2f}%")
             self.logger.info("-" * 50)  
             
+            print(f"回测结果 - {stock.ts_code}--{stock.name}")
+            print(f"回测期间: {self.start_date} 至 {self.end_date}")
+            print(f"初始资金: {self.initial_capital:,.2f}")
+            print(f"期末总值: {df.iloc[-1]['total_value']:,.2f}")
+            print(f"总收益率: {df.iloc[-1]['return_rate']:.2f}%")
+            print("-" * 50)  
+            
             # 保存详细结果到CSV
-            df.to_csv(f'backtest_{stock.ts_code}_{self.start_date}_{self.end_date}.csv', index=False)
-                
+            df.to_csv(f'backtest_{stock.ts_code}_{self.start_date}_{self.end_date}.csv', index=False, encoding='gbk')
         return results
 
 def main():

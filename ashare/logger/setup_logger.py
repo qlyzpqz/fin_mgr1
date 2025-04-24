@@ -38,7 +38,7 @@ def setup_logger(log_level=logging.INFO):
     
     # 添加处理器
     logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
+    # logger.addHandler(console_handler)
     
     return logger
 

@@ -4,7 +4,9 @@ from typing import List, Optional
 import tushare as ts
 import pandas as pd
 import logging
+from ashare.logger.setup_logger import get_logger
 
+from ashare.logger.setup_logger import get_logger
 from ashare.models.tushare_api import TushareAPI
 from ..models.financial_report import (
     FinancialReport, IncomeStatement, BalanceSheet,
@@ -22,7 +24,7 @@ class FinancialReportFetcher:
             token: Tushare API token
         """
         self.pro = TushareAPI(token)
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger()
         self.logger.info("初始化 FinancialReportFetcher")
         
     def _convert_date(self, date_str: str) -> Optional[date]:
