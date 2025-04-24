@@ -2,3 +2,5 @@ tushare
 pytest
 scipy
 numpy
+sklearn
+
